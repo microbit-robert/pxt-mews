@@ -1,0 +1,338 @@
+diff --git a/mews.ts b/mews.ts
+index 6a12820..aecb274 100644
+--- a/mews.ts
++++ b/mews.ts
+@@ -1 +1,5 @@
+-// AUTO-GENERATED. DO NOT TOUCH. //
++// BASEPLATE OVERWRITTEN BY EXTWRITECODE. DO NOT TOUCH. //
++namespace audio{
++  export let sample_rate:number = -1;
++  export let audio_data: {[key:string]: {[key:string]: any }} = {};
++}
+\ No newline at end of file
+diff --git a/pxt.json b/pxt.json
+index 9f62b2a..6a2930c 100644
+--- a/pxt.json
++++ b/pxt.json
+@@ -3,15 +3,12 @@
+     "version": "1.0.0",
+     "description": "A PXT Extension to allow for Text to speech on the microbit - using word-stringing",
+     "dependencies": {
+-        "core": "*",
+-        "microphone": "*"
++        "core": "*"
+     },
+     "files": [
+         "README.md",
+         "textToSpeech.ts",
+         "mews.ts",
+-        "source/audio.h",
+-        "source/audio.cpp",
+         "source/utils/string_utils.ts",
+         "source/utils/decompressor.h",
+         "source/utils/decompressor.cpp",
+diff --git a/shims.d.ts b/shims.d.ts
+index 3f3cf1c..bec2d9f 100644
+--- a/shims.d.ts
++++ b/shims.d.ts
+@@ -2,8 +2,7 @@
+ 
+ 
+     /**
+-     * Plays an individual audio sample through the Jiangsu Huaneng MLT-8530 Speaker.
+-     * @param sample The sample to play through the speaker. 
++     * Updates the ready flag to indicate the system is ready for another word.
+      */
+ 
+ declare namespace tts {
+@@ -14,7 +13,7 @@ declare namespace tts {
+      * @param display_text How the word should be displayed on the screen
+      */
+     //% shim=tts::announceWord
+-    function announceWord(speak_text: string, display_text: string): void;
++    function announceWord(display_text: string, audio_data: Buffer, sample_rate: int32, size: int32): void;
+ }
+ 
+ // Auto-generated. Do not edit. Really.
+diff --git a/source/audio.cpp b/source/audio.cpp
+deleted file mode 100644
+index a303127..0000000
+--- a/source/audio.cpp
++++ /dev/null
+@@ -1,16 +0,0 @@
+-#include "audio.h"
+-#include "pxt.h"
+-
+-namespace audio{
+-  std::map<std::string, Audio_Data> data_map;  // actual definition lives here
+-
+-  //%
+-  void add_audio(String name, Buffer data, int data_len, int sample_rate){
+-    // uBit.display.scroll(ManagedString(name->getUTF8Data())); // temporary debug
+-    Audio_Data audioData;
+-    audioData.data = data->data;
+-    audioData.size = data_len;
+-    audioData.sample_rate = sample_rate;
+-    data_map[std::string(name->getUTF8Data())] = audioData;
+-  }
+-}
+\ No newline at end of file
+diff --git a/source/audio.h b/source/audio.h
+deleted file mode 100644
+index 6df848e..0000000
+--- a/source/audio.h
++++ /dev/null
+@@ -1,35 +0,0 @@
+-// AUTO-GENERATED. DO NOT TOUCH. //
+-// SAMPLE CODE: //
+-// PRAGMA ONCE //
+-#ifndef AUDIO_H
+-#define AUDIO_H
+-
+-// IMPORTS //
+-#include "pxt.h"
+-#include <map>
+-#include <string>
+-
+-// STRUCTS //
+-// Struct to hold all the important audio data.
+-struct Audio_Data{
+-  uint8_t* data;
+-  size_t size;
+-  int sample_rate;
+-};
+-
+-// CONSTANTS //
+-// Data
+-namespace audio{
+-  extern std::map<std::string, Audio_Data> data_map;  //
+-
+-  /**
+-   * Adds a word to the list of words that can be spoken by the text-to-speech system, accessed through a typescript shim.
+-   * @param name The word being said by the text-to-speech system.
+-   * @param data The IMA ADPCM encoded audio data of that maps to the word. 
+-   * @param data_len MISSING PARAM CAUSING COMPILE ERRORS ADDED.
+-   * @param sample_rate The sample rate of the audio being played.
+-   */
+-  void add_audio(String name, Buffer data, int data_len, int sample_rate);
+-}
+-
+-#endif
+\ No newline at end of file
+diff --git a/source/textToSpeech.cpp b/source/textToSpeech.cpp
+index 2274016..dea0b00 100644
+--- a/source/textToSpeech.cpp
++++ b/source/textToSpeech.cpp
+@@ -2,7 +2,6 @@
+ #include "pxt.h"
+ #include "MicroBit.h"
+ #include "utils/decompressor.h"
+-#include "audio.h"
+ #include <string>
+ using namespace pxt;
+ 
+@@ -22,71 +21,39 @@ void init_pwm();
+  * @param out_size The size of the data being played.
+  */
+ void play_wav(uint8_t* audio_data, size_t out_size);
++
+ /**
+  * Plays an individual audio sample through the Jiangsu Huaneng MLT-8530 Speaker.
+  * @param sample The sample to play through the speaker. 
+  */
+ void play_sample(uint16_t sample);
+ 
+-namespace tts{
+-  // FUNCTION DECLARATIONS //
+-  /**
+-   * Plays a word through the Text-To-Speech System.
+-   * @param speak_text The name of the word being spoken in the data_map.
+-   * @param display_text How the word should be displayed on the screen
+-   */
+-  void announceWord(String speak_text, String display_text);
+-
+-  //%
+-  void announceWord(String speak_text, String display_text){
+-    #if MICROBIT_CODAL
+-    Audio_Data audio_obj = audio::data_map[speak_text->getUTF8Data()];
+-    if(audio_obj.data == nullptr){
+-      uBit.display.scroll("NO KEY");
+-      return;
+-    }
+-    size_t out_size = 0;
+-    uint8_t* audio_data = decompress(audio_obj.data, audio_obj.size, &out_size); // U8 PCM Wav Data
+-
+-    if(out_size == 0 || audio_data == nullptr){
+-      uBit.display.scroll("ERR");
+-      return;
+-    }
+-
+-    init_timer(audio_obj.sample_rate);
+-    init_pwm(); // Initialises PWM
+-    uBit.display.scrollAsync(ManagedString(display_text->getUTF8Data()));
+-    play_wav(audio_data, out_size);
+-    
+-    free(audio_data);
+-    #else
+-    uBit.display.scroll(ManagedString(display_text->getUTF8Data()));
+-    #endif
+-  }
+-}
+-
+ #if MICROBIT_CODAL
++// FUNCTION DEFINITIONS //
+ void play_wav(uint8_t* audio_data, size_t out_size){
++  init_pwm();
++  
+   for(unsigned int i=0; i<out_size/sizeof(uint8_t); i++){
+     NRF_TIMER0->TASKS_CLEAR=(TIMER_TASKS_CLEAR_TASKS_CLEAR_Trigger<<TIMER_TASKS_CLEAR_TASKS_CLEAR_Pos);                         // Resets the timer
+     NRF_TIMER0->EVENTS_COMPARE[0]=(TIMER_EVENTS_COMPARE_EVENTS_COMPARE_NotGenerated<<TIMER_EVENTS_COMPARE_EVENTS_COMPARE_Pos);  // Resets the comparison check
+-
+-    // Play Sample (Not Functioning Correctly)
++    
++    //Play Sample (Not Functioning Correctly)
+     play_sample((uint16_t)audio_data[i]);
+     
+     // Wait for timer to finish
+     while(NRF_TIMER0->EVENTS_COMPARE[0] == (TIMER_EVENTS_COMPARE_EVENTS_COMPARE_NotGenerated << TIMER_EVENTS_COMPARE_EVENTS_COMPARE_Pos));
+   }
++  
+   NRF_TIMER0->TASKS_STOP = (TIMER_TASKS_STOP_TASKS_STOP_Trigger<<TIMER_TASKS_STOP_TASKS_STOP_Pos);                              // Stops the timer
+   NRF_PWM0->ENABLE = (PWM_ENABLE_ENABLE_Disabled << PWM_ENABLE_ENABLE_Pos);                                                     // Disables the timer    
+ }
+ 
+-
++// Potentially Deprecated (if play_sequence() works)
+ void play_sample(uint16_t sample){
+   static volatile uint16_t sequence[1];
+   sequence[0] = (sample * NRF_PWM0->COUNTERTOP) / 255;                                                                // Defines a sequence
+-
+-  NRF_PWM0->SEQ[0].PTR = ((uint32_t)sequence << PWM_SEQ_PTR_PTR_Pos);                                                // Finds the start of the sequence 
++  
++  NRF_PWM0->SEQ[0].PTR = ((uint32_t)sequence << PWM_SEQ_PTR_PTR_Pos);                                                 // Finds the start of the sequence 
+   NRF_PWM0->SEQ[0].CNT = (1 << PWM_SEQ_CNT_CNT_Pos);                                                                  // Defines the size of the sequence as 1 
+   NRF_PWM0->TASKS_SEQSTART[0] = (PWM_TASKS_SEQSTART_TASKS_SEQSTART_Trigger << PWM_TASKS_SEQSTART_TASKS_SEQSTART_Pos); // Enables the Sequence
+ }
+@@ -95,25 +62,68 @@ void init_timer(int sample_rate){
+   // Timer Initialisation
+   NRF_TIMER0->PRESCALER = (4UL << TIMER_PRESCALER_PRESCALER_Pos);                                         // Sets the prescaler to divide the clock by 4
+   NRF_TIMER0->BITMODE = (TIMER_BITMODE_BITMODE_32Bit << TIMER_BITMODE_BITMODE_Pos);                       // Sets the bitmode to 32bits
+-
++  
+   NRF_TIMER0->CC[0] = 1000000/sample_rate;                                                                // Sets how long to wait for before returning True
+   NRF_TIMER0->TASKS_START = (TIMER_TASKS_START_TASKS_START_Trigger << TIMER_TASKS_START_TASKS_START_Pos); // Starts the timer
+ }
+ 
+ void init_pwm(){
+   NRF_PWM0->PSEL.OUT[0] = (MICROBIT_PIN_SPEAKER << PWM_PSEL_OUT_PIN_Pos) |                // Maps the first pin to the speaker
+-                          (PWM_PSEL_OUT_CONNECT_Connected << PWM_PSEL_OUT_CONNECT_Pos);   // Connects the pin
+-      
++  (PWM_PSEL_OUT_CONNECT_Connected << PWM_PSEL_OUT_CONNECT_Pos);                           // Connects the pin
++  
+   NRF_PWM0->ENABLE = (PWM_ENABLE_ENABLE_Enabled << PWM_ENABLE_ENABLE_Pos);                // Enables PWM
+-
++  
+   NRF_PWM0->DECODER = (PWM_DECODER_LOAD_Common << PWM_DECODER_LOAD_Pos);                  // Specifies the Common Decoder
+   NRF_PWM0->MODE = (PWM_MODE_UPDOWN_Up << PWM_MODE_UPDOWN_Pos);                           // Specifies the mode to be up-only
+   
+   NRF_PWM0->PRESCALER = (PWM_PRESCALER_PRESCALER_DIV_1 << PWM_PRESCALER_PRESCALER_Pos);   // Specifies the prescaler to divide the clock by 0
+-  NRF_PWM0->COUNTERTOP = 1020;
+-
++  NRF_PWM0->COUNTERTOP = 1024;
++  
+   NRF_PWM0->SEQ[0].REFRESH  = (0 << PWM_SEQ_REFRESH_CNT_Pos);                             // Disables Refreshing
+   NRF_PWM0->SEQ[0].ENDDELAY = (0 << PWM_SEQ_ENDDELAY_CNT_Pos);                            // Disables End Delay
+   NRF_PWM0->LOOP = (PWM_LOOP_CNT_Disabled << PWM_LOOP_CNT_Pos);                           // Disables Looping
+ }
++
+ #endif
++
++// NAMESPACES //
++namespace tts{  
++  // FUNCTION DECLARATIONS //
++  /**
++   * Plays a word through the Text-To-Speech System.
++   * @param speak_text The name of the word being spoken in the data_map.
++   * @param display_text How the word should be displayed on the screen
++   */
++  void announceWord(String display_text);
++  
++  // FUNCTION DEFINITIONS //
++  //%
++  void announceWord(String display_text, Buffer audio_data, int sample_rate, int size){
++    #if MICROBIT_CODAL == 1
++    
++    if(size == -1){
++      uBit.display.scroll(ManagedString(display_text->getUTF8Data()), 100);
++      return;
++    }
++
++    size_t out_size = 0;
++    uint8_t* decompressed = decompress(audio_data->data, size, &out_size); // U8 PCM Wav Data
++    
++    if(out_size == 0 || decompressed == nullptr){
++      uBit.display.scroll("ERR", 100);
++      return;
++    }
++    
++    init_timer(sample_rate);
++    volatile int display_status = -1066;
++    do{
++      display_status = uBit.display.scrollAsync(ManagedString(display_text->getUTF8Data()), 50);
++    }while (display_status != 0);
++    play_wav(decompressed, out_size);
++
++    free(decompressed);
++    #else
++    uBit.display.scroll(ManagedString(display_text->getUTF8Data()), 50);
++    #endif
++  }
++}
+\ No newline at end of file
+diff --git a/source/utils/string_utils.ts b/source/utils/string_utils.ts
+index 6827aa0..526fdca 100644
+--- a/source/utils/string_utils.ts
++++ b/source/utils/string_utils.ts
+@@ -12,6 +12,9 @@ namespace utils{
+           cleaned += c;
+         }
+       }
+-      return cleaned;
++      if(!isNaN(parseInt(cleaned[0]))){
++        cleaned = "_" + cleaned;
++      }
++      return cleaned.toLowerCase();
+   }
+ }
+\ No newline at end of file
+diff --git a/textToSpeech.ts b/textToSpeech.ts
+index 11f83fe..7f1fe37 100644
+--- a/textToSpeech.ts
++++ b/textToSpeech.ts
+@@ -7,14 +7,24 @@ namespace textToSpeech {
+ 
+   //% block="Say: $text"
+   export function say(text:string): void {
++    if(audio.sample_rate == -1){
++      announceWord("AUDIO NOT INITIALISED", Buffer.create(0), 0, -1);
++      return;
++    }
++    
+     words = text.split(" ");
+     words.forEach(word => {
+-      announceWord(utils.clean(word), word);
++      try{
++        announceWord(word, Buffer.fromBase64(audio.audio_data[word]["data"]), audio.sample_rate, audio.audio_data[word]["size"]);
++      }catch(TypeError){
++        announceWord("KEYERR", Buffer.create(0), 0, -1);
++      }
+     });
+   }
+ 
+   //% shim=tts::announceWord
+-  function announceWord(speak_text:string, display_text:string): void{
++  function announceWord(display_text: string, buffer:Buffer, sample_rate:number, size:number): void{
+     console.log(display_text);
+   }
++
+ }

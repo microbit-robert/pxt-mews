@@ -9,6 +9,8 @@
         "README.md",
         "textToSpeech.ts",
         "mews.ts",
+        "source/audio.h",
+        "source/audio.cpp",
         "source/utils/string_utils.ts",
         "source/utils/decompressor.h",
         "source/utils/decompressor.cpp",

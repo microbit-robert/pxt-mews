@@ -1,30 +1,16 @@
-/**
- * Provides access to the Mews Text To Speech System
- */
-//% color=#FF8243 weight=100 icon="\uf238"
 namespace textToSpeech {
-  let words:string[];
+  let words: string[];
 
   //% block="Say: $text"
-  export function say(text:string): void {
-    if(audio.sample_rate == -1){
-      announceWord("AUDIO NOT INITIALISED", Buffer.create(0), 0, -1);
-      return;
-    }
-    
+  export function say(text: string): void {
     words = text.split(" ");
-    words.forEach(word => {
-      try{
-        announceWord(word, Buffer.fromBase64(audio.audio_data[word]["data"]), audio.sample_rate, audio.audio_data[word]["size"]);
-      }catch(TypeError){
-        announceWord("KEYERR", Buffer.create(0), 0, -1);
-      }
+    words.forEach((word) => {
+      announceWord(utils.clean(word), word);
     });
   }
 
   //% shim=tts::announceWord
-  function announceWord(display_text: string, buffer:Buffer, sample_rate:number, size:number): void{
+  function announceWord(speak_text: string, display_text: string): void {
     console.log(display_text);
   }
-
 }
