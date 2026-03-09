@@ -2,7 +2,8 @@
 
 
     /**
-     * Updates the ready flag to indicate the system is ready for another word.
+     * Plays an individual audio sample through the Jiangsu Huaneng MLT-8530 Speaker.
+     * @param sample The sample to play through the speaker. 
      */
 
 declare namespace tts {
@@ -13,7 +14,7 @@ declare namespace tts {
      * @param display_text How the word should be displayed on the screen
      */
     //% shim=tts::announceWord
-    function announceWord(display_text: string, audio_data: Buffer, sample_rate: int32, size: int32): void;
+    function announceWord(display_text: string, base64: string, sample_rate: int32): void;
 }
 
 // Auto-generated. Do not edit. Really.

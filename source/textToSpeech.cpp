@@ -86,44 +86,93 @@ void init_pwm(){
 
 #endif
 
-// NAMESPACES //
-namespace tts{  
-  // FUNCTION DECLARATIONS //
+static const int8_t b64_table[256] = {
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,62,-1,-1,-1,63,
+    52,53,54,55,56,57,58,59,60,61,-1,-1,-1, 0,-1,-1,
+    -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,
+    15,16,17,18,19,20,21,22,23,24,25,-1,-1,-1,-1,-1,
+    -1,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,
+    41,42,43,44,45,46,47,48,49,50,51,-1,-1,-1,-1,-1
+};
+
+static uint8_t* decode_base64(const char* src, size_t len, size_t* out_len) {
+    size_t olen = len / 4 * 3;
+    uint8_t* out = (uint8_t*)malloc(olen);
+    if (!out) return nullptr;
+
+    uint8_t* pos = out;
+    int pad = 0;
+
+    for (size_t i = 0; i < len; i += 4) {
+        int8_t a = b64_table[(uint8_t)src[i]];
+        int8_t b = b64_table[(uint8_t)src[i+1]];
+        int8_t c = b64_table[(uint8_t)src[i+2]];
+        int8_t d = b64_table[(uint8_t)src[i+3]];
+
+        if (c == -1) pad++;
+        if (d == -1) pad++;
+
+        *pos++ = (a << 2) | (b >> 4);
+        if (c != -1) *pos++ = (b << 4) | (c >> 2);
+        if (d != -1) *pos++ = (c << 6) | d;
+    }
+
+    *out_len = pos - out;
+    return out;
+}
+
+namespace tts {
   /**
    * Plays a word through the Text-To-Speech System.
    * @param speak_text The name of the word being spoken in the data_map.
    * @param display_text How the word should be displayed on the screen
    */
   void announceWord(String display_text);
-  
-  // FUNCTION DEFINITIONS //
+
   //%
-  void announceWord(String display_text, Buffer audio_data, int sample_rate, int size){
-    #if MICROBIT_CODAL == 1
-    
-    if(size == -1){
+  void announceWord(String display_text, String base64, int sample_rate) {
+  #if MICROBIT_CODAL == 1
+
+    const char* b64 = base64->getUTF8Data();
+    size_t b64_len = base64->getUTF8Size();
+
+    if (b64_len == 0) {
       uBit.display.scroll(ManagedString(display_text->getUTF8Data()), 100);
       return;
     }
 
-    size_t out_size = 0;
-    uint8_t* decompressed = decompress(audio_data->data, size, &out_size); // U8 PCM Wav Data
-    
-    if(out_size == 0 || decompressed == nullptr){
+    // Decode base64 → compressed audio
+    size_t compressed_len = 0;
+    uint8_t* compressed = decode_base64(b64, b64_len, &compressed_len);
+
+    if (!compressed || compressed_len == 0) {
       uBit.display.scroll("ERR", 100);
       return;
     }
-    
-    init_timer(sample_rate);
-    volatile int display_status = -1066;
-    do{
-      display_status = uBit.display.scrollAsync(ManagedString(display_text->getUTF8Data()), 50);
-    }while (display_status != 0);
-    play_wav(decompressed, out_size);
 
-    free(decompressed);
-    #else
+    // Decompress → PCM
+    size_t pcm_len = 0;
+    uint8_t* pcm = decompress(compressed, compressed_len, &pcm_len);
+    free(compressed);
+
+    if (!pcm || pcm_len == 0) {
+      uBit.display.scroll("ERR", 100);
+      return;
+    }
+
+    // Scroll + play synchronously
     uBit.display.scroll(ManagedString(display_text->getUTF8Data()), 50);
-    #endif
+
+    init_timer(sample_rate);
+    play_wav(pcm, pcm_len);
+
+    free(pcm);
+
+  #else
+    uBit.display.scroll(ManagedString(display_text->getUTF8Data()), 50);
+  #endif
   }
-}
+
+} // namespace tts
