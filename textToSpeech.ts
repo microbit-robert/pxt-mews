@@ -28,3 +28,11 @@ namespace textToSpeech {
   }
 
 }
+
+
+// BASEPLATE OVERWRITTEN BY EXTWRITECODE. DO NOT TOUCH. //
+namespace audio{
+  export let sample_rate: number;
+  export let audio_data: {[key:string]: {[key:string]: any }};
+}
+
