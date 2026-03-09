@@ -162,8 +162,8 @@ namespace tts {
       return;
     }
 
-    // Scroll + play synchronously
-    uBit.display.scroll(ManagedString(display_text->getUTF8Data()), 50);
+    // Scroll the text but don't wait for it. Better to let audio play freely.
+    uBit.display.scrollAsync(ManagedString(display_text->getUTF8Data()), 50);
 
     init_timer(sample_rate);
     play_wav(pcm, pcm_len);
