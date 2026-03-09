@@ -1,15 +1,11 @@
-// PRAGMA ONCE //
 #ifndef __DECOMPRESSOR_H
 #define __DECOMPRESSOR_H
 
-// CONSTANTS //
-// Index Table to Decode IMA ADPCM Data
 static const int index_table[16] = {
   -1,-1,-1,-1,2,4,6,8,
   -1,-1,-1,-1,2,4,6,8
 };
 
-// Step Table to Decode IMA ADPCM Data
 static const int step_table[89] = {
   7,8,9,10,11,12,13,14,16,17,
   19,21,23,25,28,31,34,37,41,45,
@@ -22,13 +18,15 @@ static const int step_table[89] = {
   15289,16818,18500,20350,22385,24623,27086,29794,32767
 };
 
-// FUNCTION DECLARATIONS //
 /**
- * Decompresses IMA ADPCM audio data to raw Wav data.
- * @param data The compressed data.
- * @param data_len The length of the compressed data.
- * @param out_len Pointer for an object to return how long the resultant data is.
- * @returns The Decompressed data
+ * Decompresses IMA ADPCM audio data into a caller-provided buffer.
+ * @param data         The compressed input data.
+ * @param data_len     The length of the compressed data.
+ * @param out          Caller-provided output buffer to write PCM into.
+ * @param out_capacity The size of the output buffer in bytes.
+ * @param out_len      Set to the number of bytes written on success, 0 on failure.
+ * @returns true on success, false if the output buffer is too small.
  */
-uint8_t* decompress(const uint8_t* data, size_t data_len, size_t* out_len);
+bool decompress(const uint8_t* data, size_t data_len, uint8_t* out, size_t out_capacity, size_t* out_len);
+
 #endif
