@@ -15,7 +15,7 @@ void play_sample(uint16_t sample);
 // Single static PCM buffer — lives in BSS, never touches the heap.
 // sized for the largest word you'll ever have: data_len * 2.
 // Your sample data shows sizes up to 11264 compressed bytes → 22528 PCM bytes.
-#define PCM_BUFFER_CAPACITY 23000
+#define PCM_BUFFER_CAPACITY 32768
 static uint8_t pcm_buffer[PCM_BUFFER_CAPACITY];
 
 void play_wav(uint8_t* audio_data, size_t out_size){
