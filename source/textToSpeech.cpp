@@ -63,6 +63,7 @@ void init_pwm(){
 namespace tts {
   //%
   void announceWord(String display_text, Buffer audio_data, int sample_rate, int size){
+      void announceWord(String display_text, Buffer audio_data, int sample_rate, int size){
     #if MICROBIT_CODAL == 1
 
     if(size == -1){
@@ -70,8 +71,20 @@ namespace tts {
       return;
     }
 
+    // DEBUG: show what size and buffer length we actually received
+    uBit.display.scroll(ManagedString("SZ:"), 80);
+    uBit.display.scroll(ManagedString(size), 80);
+    uBit.display.scroll(ManagedString("BL:"), 80);
+    uBit.display.scroll(ManagedString((int)audio_data->length), 80);
+
     size_t out_len = 0;
     bool ok = decompress(audio_data->data, (size_t)size, pcm_buffer, PCM_BUFFER_CAPACITY, &out_len);
+
+    // DEBUG: show decompressor result
+    uBit.display.scroll(ManagedString("OK:"), 80);
+    uBit.display.scroll(ManagedString((int)ok), 80);
+    uBit.display.scroll(ManagedString("OL:"), 80);
+    uBit.display.scroll(ManagedString((int)out_len), 80);
 
     if(!ok || out_len == 0){
       uBit.display.scroll("ERR", 100);

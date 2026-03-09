@@ -31,7 +31,3 @@ namespace textToSpeech {
     console.log(display_text);
   }
 }
-
-namespace audio {
-  export let getWord: (word: string) => Buffer;
-}
