@@ -63,7 +63,6 @@ void init_pwm(){
 namespace tts {
   //%
   void announceWord(String display_text, Buffer audio_data, int sample_rate, int size){
-      void announceWord(String display_text, Buffer audio_data, int sample_rate, int size){
     #if MICROBIT_CODAL == 1
 
     if(size == -1){
@@ -103,5 +102,4 @@ namespace tts {
     #else
     uBit.display.scroll(ManagedString(display_text->getUTF8Data()), 50);
     #endif
-  }
 }
