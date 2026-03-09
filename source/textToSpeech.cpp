@@ -102,4 +102,5 @@ namespace tts {
     #else
     uBit.display.scroll(ManagedString(display_text->getUTF8Data()), 50);
     #endif
+  }
 }
